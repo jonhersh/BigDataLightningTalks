@@ -1,0 +1,94 @@
+---
+title: 'Who''s Afraid of Regularized Regressons: Lasso in R in Five-ish Minutes'
+author: "Jonathan Hersh, Poverty GP, jhersh@worldbank.org"
+output: slidy_presentation
+---
+
+
+
+## What is a regularized regression?
+
+- *A constrained regression, where a penalty--or budget--is imposed for all coefficients used* 
+
+- **Example: Lasso**
+$$
+\mbox{\ensuremath{\beta}}_{lasso}=argmin_{\beta}\left\{ \frac{1}{2}\underset{\text{\textnormal{{OLS\thinspace Sum\text{ of squared residuals}}}}}{\underbrace{\sum_{i=1}^{N}\left(y_{i}-\beta_{0}-\sum_{j=1}^{K}x_{ij}\beta_{j}\right)^{2}}}+\underset{\textnormal{\textnormal{\textnormal{Shrinkage\thinspace\thinspace factor}}}}{\underbrace{\lambda\sum_{j=1}^{K}\left|\beta_{j}\right|}}\right\} 
+$$
+
+- Note this is a Lagrangian constrained minimization
+
+
+## Why does this matter? 
+1 Avoids overfitting 
+<!--  # - $R^2_{adj}$ will always increase if $|t|>1$, but poor out-of-sample performance --> 
+
+2 Choice of $\lambda$ acts as a de-facto variable selection mechanism
+
+![alt text](biasvariance2.png)
+
+
+## Estimating Lasso Models in R: `glmnet` package
+* Many regularized regression packages in `R`
+
+    - I haven't had much success with the $Stata$ `lars` extension 
+  
+  
+* Focus on `glmnet` package
+
+  + Advantages
+  
+      - Very fast! 
+  
+      - Automatically computes $\lambda$ for a range of values
+      
+      - Algorithm selects optimal $\lambda$ through cross-validation
+
+
+
+## `glmnet` Lasso Code
+
+```{r, echo=TRUE, tidy = TRUE, size='footnotesize', message=FALSE, tidy.opts=list(width.cutoff=40)}
+require('glmnet')
+age <- sample(20:60, 1000, replace = TRUE)
+educ <- sample(1:12, 1000, replace = TRUE)
+noise <- matrix(rnorm(1000 * 20, mean = 0, sd = 1), 
+                     nrow = 1000, ncol = 20)
+wage <- 2 * age + 12 * educ + rnorm(1000, mean = 0, sd = 2)
+Xs <- model.matrix(wage ~ age + educ + noise)[,-1]
+fit <- cv.glmnet(x = Xs, y = wage, alpha = 1, 
+                 family = "gaussian")
+```
+
+
+## `glmnet` Coeficients using $\lambda = \lambda_{1se}$
+
+```{r, echo=FALSE, tidy = TRUE, size='footnotesize', message=FALSE, tidy.opts=list(width.cutoff=5),results = 'asis'}
+coefmat <- as.matrix(coef(fit, s = "lambda.1se"))[-1,]
+coefmat1 <- as.matrix(coefmat[1:11], nrow = 11)
+coefmat2 <- as.matrix(coefmat[12:length(coefmat)], nrow = 11)
+knitr::kable(coefmat1, longtable = TRUE, padding = 2)
+```
+
+## `glmnet` Coefficients using $\lambda = \lambda_{1se}$
+
+```{r, echo=FALSE, tidy = TRUE, size='footnotesize', message=FALSE, tidy.opts=list(width.cutoff=5),results = 'asis'}
+knitr::kable(coefmat2, longtable = TRUE, padding = 2)
+```
+
+## `glmnet` Coefficient path
+
+![alt text](LassoRegPath2.png)
+
+## Thanks!
+
+* __Extensions:__
+  + Lots of work in economics using regularized regressions
+      - Belloni and Chernozhukov (2013) ["Least squares after model selection in high-dimensional sparse models"](http://arxiv.org/abs/1001.0188)
+      - Bajari et al (2014) ["Machine Learning Methods for Demand Estimation"](https://www.utexas.edu/cola/_files/sr8456/PapersAndProceedings2014-12-12.pdf)
+      - Baxter et al (2015) "Robust Determinants of Bilateral Trade"
+  + `glmnet` works with many models: logit, probit, multinomial, cox 
+      - Great `glmnet` vignette [here (link)](http://web.stanford.edu/~hastie/glmnet/glmnet_alpha.html)
+  + Download R for **free** at [www.rstudio.com](http://www.rstudio.com/)
+      - This presentation was created in `R` using `Rmarkdown` 
+  + Talk/code is available at [github.com/jonhersh](https://github.com/jonhersh), or email jhersh@worldbank.org
+
